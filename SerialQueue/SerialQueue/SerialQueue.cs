@@ -1,27 +1,36 @@
-﻿using System;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Threading
 {
     public class SerialQueue
     {
-        readonly object _locker = new object();
-        Task _lastTask;
+        SemaphoreSlim _semaphore = new SemaphoreSlim(1);
 
-        public Task Run(Action action)
+        public async Task<T> Enqueue<T>(Func<T> function)
         {
-            lock (_locker) {
-                _lastTask = _lastTask != null ? _lastTask.ContinueWith(_ => action()) : Task.Run(action);
-                return _lastTask;
+            await _semaphore.WaitAsync();
+            try
+            {
+                return await Task.Run(function);
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 
-        public Task<T> Run<T>(Func<T> function)
+        public async Task Enqueue(Action action)
         {
-            lock (_locker) {
-                var task = _lastTask != null ? _lastTask.ContinueWith(_ => function()) : Task.Run(function);
-                _lastTask = task;
-                return task;
+            await _semaphore.WaitAsync();
+            try
+            {
+                await Task.Run(action);
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
     }
