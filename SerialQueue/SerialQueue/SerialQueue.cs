@@ -23,15 +23,10 @@ namespace Threading
 
         public async Task Enqueue(Action action)
         {
-            await _semaphore.WaitAsync();
-            try
-            {
-                await Task.Run(action);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
+            await Enqueue<object>(() => {
+                action();
+                return null;
+            });
         }
     }
 }
